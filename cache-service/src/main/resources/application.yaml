@@ -1,0 +1,20 @@
+server:
+  port: ${SERVER_PORT}
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: cache-service
+  config:
+    import: optional:file:cache-service/.env[.properties]
+  cache:
+    type: redis
+  data:
+    redis:
+      cluster:
+        nodes: ${REDIS_CLUSTER_NODES}
+        max-redirects: 3
+
+servers-url:
+  web-service: ${URL_WEB_SERVER}
