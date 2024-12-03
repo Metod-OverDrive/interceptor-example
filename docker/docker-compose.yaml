@@ -1,0 +1,77 @@
+version: '3'
+
+networks:
+  interceptor-service:
+    driver: bridge
+
+volumes:
+  db-data:
+    driver: local
+  rabbit-data:
+    driver: local
+
+services:
+  web-service:
+    build:
+      context: ../web-service
+    networks:
+      - interceptor-service
+    depends_on:
+      - db
+      - RabbitMQ
+    ports:
+      - '8080:8080'
+    env_file: ../web-service/docker.env
+
+  tech-work-service:
+    build:
+      context: ../tech-work-service
+    networks:
+      - interceptor-service
+    depends_on:
+      - RabbitMQ
+    ports:
+      - '8081:8081'
+    env_file: ../tech-work-service/docker.env
+
+  cache-service:
+    build:
+      context: ../cache-service
+    networks:
+      - interceptor-service
+    depends_on:
+      - db
+    ports:
+      - '8082:8082'
+    env_file: ../cache-service/.env
+
+  db:
+    image: postgres:15.1-alpine
+    container_name: postgres
+    networks:
+      - interceptor-service
+    env_file: .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DATABASE}
+    ports:
+      - ${DB_LOCAL_PORT}:${DB_DOCKER_PORT}
+    volumes:
+      - ../web-service/src/main/resources/preliquibase:/docker-entrypoint-initdb.d
+      - db-data:/var/lib/postgresql/data
+
+  RabbitMQ:
+    image: rabbitmq:3-management-alpine
+    networks:
+      - interceptor-service
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit disk_free_limit 2147483648
+      #- RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit log_levels [{connection,error},{default,error}] disk_free_limit 2147483648
+    volumes:
+      - rabbit-data:/var/lib/rabbitmq
+    ports:
+      - '5672:5672'
+      - '15672:15672'
